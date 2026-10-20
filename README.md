@@ -11,6 +11,9 @@ npm install
 npm run dev
 ```
 
+Set `DATABASE_URL` in the root `.env` before installing dependencies; the
+`postinstall` script generates Prisma Client.
+
 Open [http://localhost:3000](http://localhost:3000). The Clerk CLI manages the
 development credentials in `.env.local`; keep that file private and do not
 commit it.
@@ -27,3 +30,19 @@ commit it.
 
 For production, configure a production Clerk instance and credentials before
 deploying.
+
+## Database
+
+The app uses Prisma ORM 7 with PostgreSQL. Set `DATABASE_URL` to your
+PostgreSQL TCP connection string in the root `.env` file; `.env*` files are
+ignored by Git. Keep the connection string private.
+
+Generate Prisma Client and verify the connection:
+
+```bash
+npx prisma generate
+npm run db:test
+```
+
+Use `npm run db:studio` to open Prisma Studio. Inspect an existing database
+before applying schema changes.
