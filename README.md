@@ -11,9 +11,6 @@ npm install
 npm run dev
 ```
 
-Set `DATABASE_URL` in the root `.env` before installing dependencies; the
-`postinstall` script generates Prisma Client.
-
 Open [http://localhost:3000](http://localhost:3000). The Clerk CLI manages the
 development credentials in `.env.local`; keep that file private and do not
 commit it.
@@ -33,16 +30,19 @@ deploying.
 
 ## Database
 
-The app uses Prisma ORM 7 with PostgreSQL. Set `DATABASE_URL` to your
-PostgreSQL TCP connection string in the root `.env` file; `.env*` files are
-ignored by Git. Keep the connection string private.
+The app uses Prisma ORM 8 with PostgreSQL. Copy `.env.example` to `.env` and
+set `DATABASE_URL` to your PostgreSQL connection string. Keep the connection
+string private; `.env` is ignored by Git.
 
-Generate Prisma Client and verify the connection:
+The data contract lives in `prisma/contract.prisma`. After changing it, emit
+the generated contract files:
 
 ```bash
-npx prisma generate
-npm run db:test
+pnpm prisma contract emit
 ```
 
-Use `npm run db:studio` to open Prisma Studio. Inspect an existing database
-before applying schema changes.
+There is no automatic contract-emission plugin for Next.js in this project.
+The `prebuild` script emits the contract before production builds; during
+development, run the command manually after contract changes. Initialize the
+database with `pnpm prisma db init` only after configuring a real
+`DATABASE_URL`.
