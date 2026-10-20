@@ -1493,10 +1493,6 @@
                 "updatedAt": {
                   "codecId": "pg/timestamptz-string@1",
                   "dataType": "pg/timestamptz",
-                  "default": {
-                    "expression": "now()",
-                    "kind": "function"
-                  },
                   "nullable": false
                 }
               },
@@ -1669,10 +1665,6 @@
                 "updatedAt": {
                   "codecId": "pg/timestamptz-string@1",
                   "dataType": "pg/timestamptz",
-                  "default": {
-                    "expression": "now()",
-                    "kind": "function"
-                  },
                   "nullable": false
                 }
               },
@@ -1734,10 +1726,6 @@
                 "updatedAt": {
                   "codecId": "pg/timestamptz-string@1",
                   "dataType": "pg/timestamptz",
-                  "default": {
-                    "expression": "now()",
-                    "kind": "function"
-                  },
                   "nullable": false
                 },
                 "url": {
@@ -1866,10 +1854,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "dbb55a2b187581d07408cad05177b9a880c7f9317e6040a6f6ce62f719d7e122"
+    "storageHash": "6f754abe4841e49134928f18da86ae2bc3d0520823cc0ce853eb25b020878367"
   },
   "execution": {
-    "executionHash": "0a36d9ea5c4a6a6974c8c9b23a0b3f53b91a5efd6b51b33a0c7e64390189f8ed",
+    "executionHash": "95f05d6c86a24746589f845d96eae12b6ecfe99fb51263c0e5469056b5e5fe35",
     "mutations": {
       "defaults": [
         {
@@ -1926,6 +1914,21 @@
             "kind": "generator"
           },
           "ref": {
+            "entry": "Environment",
+            "field": "updatedAt",
+            "namespace": "public"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "ref": {
             "entry": "Post",
             "field": "updatedAt",
             "namespace": "public"
@@ -1944,12 +1947,42 @@
         },
         {
           "onCreate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "entry": "Project",
+            "field": "updatedAt",
+            "namespace": "public"
+          }
+        },
+        {
+          "onCreate": {
             "id": "uuidv4",
             "kind": "generator"
           },
           "ref": {
             "entry": "Repository",
             "field": "id",
+            "namespace": "public"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "entry": "Repository",
+            "field": "updatedAt",
             "namespace": "public"
           }
         },
