@@ -1,5 +1,22 @@
 // use prisma-8
 
+enum EnvironmentType {
+  @@type("pg/text@1")
+  DEVELOPMENT = "DEVELOPMENT"
+  STAGING = "STAGING"
+  PRODUCTION = "PRODUCTION"
+}
+
+enum DeploymentStatus {
+  @@type("pg/text@1")
+  PENDING = "PENDING"
+  RUNNING = "RUNNING"
+  SUCCEEDED = "SUCCEEDED"
+  FAILED = "FAILED"
+  CANCELLED = "CANCELLED"
+}
+
+// Retained from the repository starter contract to avoid dropping existing data.
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
@@ -18,4 +35,99 @@ model Post {
   authorId  Int
   createdAt TimestamptzString @default(now())
   updatedAt temporal.updatedAtString()
+}
+
+model Project {
+  id          String        @id @default(uuid())
+  name        String
+  slug        String        @unique
+  description String?
+  ownerId     String
+  archivedAt  TimestamptzString?
+  createdAt   TimestamptzString @default(now())
+  updatedAt   TimestamptzString @default(now())
+  repository  Repository?
+  environments Environment[]
+  deployments Deployment[]
+
+  @@index([ownerId])
+}
+
+model Repository {
+  id        String   @id @default(uuid())
+  projectId String   @unique
+  owner     String
+  name      String
+  url       String
+  createdAt TimestamptzString @default(now())
+  updatedAt TimestamptzString @default(now())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Environment {
+  id           String          @id @default(uuid())
+  projectId    String
+  type         EnvironmentType
+  deployTarget String?
+  configRef    String?
+  createdAt    TimestamptzString @default(now())
+  updatedAt    TimestamptzString @default(now())
+  project      Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  deployments  Deployment[]
+
+  @@unique([projectId, type])
+  @@index([projectId])
+}
+
+model Deployment {
+  id             String           @id @default(uuid())
+  projectId      String
+  environmentId  String
+  commitSha      String
+  imageRef       String
+  status         DeploymentStatus @default(PENDING)
+  startedAt      TimestamptzString?
+  finishedAt     TimestamptzString?
+  failureMessage String?
+  runId          String?
+  runAttempt     Int?
+  rollbackOfId   String?
+  createdAt      TimestamptzString @default(now())
+  project        Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  environment    Environment     @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  rollbackOf     Deployment?     @relation("DeploymentRollback", fields: [rollbackOfId], references: [id], onDelete: SetNull)
+  rollbacks      Deployment[]    @relation("DeploymentRollback")
+  events         DeploymentEvent[]
+
+  @@index([projectId, createdAt])
+  @@index([environmentId, createdAt])
+  @@index([status])
+}
+
+model DeploymentEvent {
+  id              String           @id @default(uuid())
+  deploymentId    String
+  externalEventId String
+  type            String
+  status          DeploymentStatus
+  message         String?
+  occurredAt      TimestamptzString
+  createdAt       TimestamptzString @default(now())
+  deployment      Deployment       @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+
+  @@unique([deploymentId, externalEventId])
+  @@index([deploymentId, occurredAt])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json
+  createdAt  TimestamptzString @default(now())
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorId, createdAt])
 }
