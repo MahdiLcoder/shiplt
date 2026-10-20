@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Shiplt",
-  description: "Your next idea starts here.",
+  title: "ShipIt — Deployment dashboard",
+  description: "From commit to deployment, all in one place.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

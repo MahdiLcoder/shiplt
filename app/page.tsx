@@ -63,9 +63,12 @@ export default function Home() {
               </Link>
             </Show>
             <Show when="signed-in">
-              <p className="rounded-full bg-zinc-100 px-6 py-3 text-sm font-medium text-zinc-700">
-                You’re signed in.
-              </p>
+              <Link
+                className="rounded-full bg-zinc-950 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
+                href="/dashboard"
+              >
+                Open dashboard
+              </Link>
             </Show>
           </Suspense>
         </div>
