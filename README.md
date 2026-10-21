@@ -119,3 +119,19 @@ stored by this Compose project.**
 The Compose PostgreSQL credentials are fixed local development values and must
 not be reused in production. This setup builds and runs the app container; it
 does not configure a production registry or Kubernetes deployment.
+
+## GitHub Actions and GHCR
+
+The `CI` workflow runs lint, type checks, tests, and a production build on pull
+requests and pushes to `main` or version tags. After those checks pass, pushes
+to `main` and `v*` tags publish an image to `ghcr.io/<owner>/<repository>`.
+Images have an immutable `sha-<commit>` tag; `latest` is also updated from
+`main`, and version tags keep their release name.
+
+Before image publishing, add the repository Actions variable
+`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` with the public key for the Clerk instance
+used by that image. It is included in the client bundle and is not a secret.
+Private Clerk and webhook keys are not passed to the image build. Configure
+them at runtime in the deployment platform. GitHub Actions uses its provided
+`GITHUB_TOKEN`; the publish job needs package write permission enabled for the
+repository. Pull requests never receive package publishing permission.
