@@ -134,9 +134,11 @@ not be reused in production.
 
 The `CI` workflow runs lint, type checks, tests, and a production build on pull
 requests and pushes to `main` or version tags. After those checks pass, pushes
-to `main` and `v*` tags publish an image to `ghcr.io/<owner>/<repository>`.
-Images have an immutable `sha-<commit>` tag; `latest` is also updated from
-`main`, and version tags keep their release name.
+to `main` and `v*` tags publish the dashboard image to
+`ghcr.io/<owner>/<repository>` and the controlled sample app to
+`ghcr.io/<owner>/<repository>-sample-app`. Both images have an immutable
+`sha-<commit>` tag; `latest` is also updated from `main`, and version tags keep
+their release name.
 
 Before image publishing, add the repository Actions variable
 `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` with the public key for the Clerk instance
@@ -146,12 +148,13 @@ them at runtime in the deployment platform. GitHub Actions uses its provided
 `GITHUB_TOKEN`; the publish job needs package write permission enabled for the
 repository. Pull requests never receive package publishing permission.
 
-## Automatic production deployment
+## Approved sample-app deployment
 
 After verification and GHCR publishing succeed on `main`, the workflow deploys
-the pushed image by its digest to the `production` GitHub Environment. Version
-tags publish images but do not deploy them automatically. Configure these
-Environment values in GitHub before enabling the workflow:
+the sample-app image by its digest to the `production` GitHub Environment.
+ShipIt itself is not deployed by this workflow. Version tags publish images
+but do not deploy them automatically. Configure these Environment values in
+GitHub before enabling the workflow:
 
 - Variables: `SHIPIT_PROJECT_SLUG` (the existing ShipIt project slug) and
   `SHIPIT_WEBHOOK_URL` (the full `/api/webhooks/deployments` endpoint URL).
@@ -160,48 +163,41 @@ Environment values in GitHub before enabling the workflow:
   ShipIt's runtime).
 
 Set required reviewers and deployment branch restrictions on the `production`
-Environment in GitHub. Have a cluster administrator create the namespace once
-with `kubectl apply -f deploy/kubernetes/namespace.yaml`; scope the deployment
-identity to that namespace and only the permissions needed to update/read the
-application Deployment, ConfigMap, and Service, inspect pods, and read pod logs.
-The current workflow expects `KUBECONFIG_B64`; switching to GitHub OpenID
-Connect requires replacing that credential setup with the cluster provider's
-OIDC login action. Prefer that short-lived identity where supported.
+Environment in GitHub. A cluster administrator creates the namespace once with
+`kubectl apply -f deploy/kubernetes/namespace.yaml` and scopes the deployment
+identity to `shipit-demo` and only the permissions needed to update/read the
+`sample-app` Deployment and Service, inspect pods, and read pod logs. The
+workflow expects `KUBECONFIG_B64`; use the cluster provider's OIDC login action
+and short-lived credentials where supported. Make the sample-app GHCR package
+pullable by the cluster; for a private package, create an image pull Secret and
+reference it in `deploy/kubernetes/app.yaml`.
 
-Before the first deployment, create the Kubernetes `shipit-secrets` Secret as
-described below and make the GHCR image pullable by the cluster. The target
-project must already have a `PRODUCTION` environment in ShipIt. The workflow
-sends signed `RUNNING` and final `SUCCEEDED` or `FAILED` events using the
-existing HMAC webhook contract; retry event IDs are stable for each GitHub run
-attempt so ShipIt can safely deduplicate them. If webhook delivery fails after
-a successful rollout, the workflow fails and the rollout must be reconciled
-manually from the Kubernetes state and GitHub Actions log.
+The target project must already have a `PRODUCTION` environment in ShipIt. The
+workflow sends signed `RUNNING` and final `SUCCEEDED` or `FAILED` events using
+the existing HMAC webhook contract; retry event IDs are stable for each GitHub
+run attempt so ShipIt can safely deduplicate them. If webhook delivery fails
+after a successful rollout, reconcile the release record from Kubernetes state
+and the GitHub Actions log.
 
 ## Kubernetes deployment
 
-The starter manifests run two ShipIt replicas behind an internal ClusterIP
-service. Configure a managed PostgreSQL database outside Kubernetes, then
-create the `shipit-secrets` Secret in the `shipit` namespace with these keys:
-`CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SIGNING_SECRET`,
-`SHIPIT_WEBHOOK_SECRET`, and `DATABASE_URL`.
-Use a secure local file outside the repository for the values:
+The manifests run two sample-app replicas behind an internal ClusterIP
+service in the `shipit-demo` namespace. The sample app has no runtime secrets
+or database dependency. Create the namespace once:
 
 ```bash
 kubectl apply -f deploy/kubernetes/namespace.yaml
-kubectl -n shipit create secret generic shipit-secrets \
-  --from-env-file=/secure/path/shipit-runtime.env
 ```
 
-`DATABASE_URL` must point to the managed database address reachable from the
-cluster, not `localhost`. The manifests do not create a database, public
-ingress, TLS certificate, or registry credentials. For a private GHCR package,
-create a registry pull Secret in the namespace and add its name under
-`spec.template.spec.imagePullSecrets` in `app.yaml` before deploying.
+The manifests do not create a public ingress, TLS certificate, or registry
+credentials. For a private GHCR package, create an image pull Secret in the
+namespace and add its name under `spec.template.spec.imagePullSecrets` in
+`app.yaml` before deploying.
 
 Deploy an immutable image published by the workflow:
 
 ```bash
-./deploy/kubernetes/deploy.sh ghcr.io/OWNER/REPOSITORY:sha-COMMIT
+./deploy/kubernetes/deploy.sh ghcr.io/OWNER/REPOSITORY-sample-app:sha-COMMIT
 ```
 
 The script applies the manifests, waits up to three minutes for rollout, then
@@ -209,7 +205,11 @@ prints pod, deployment, and container log diagnostics if the rollout fails.
 To check the service from inside the cluster, use a temporary port-forward:
 
 ```bash
-kubectl -n shipit port-forward service/shipit 3000:3000
+kubectl -n shipit-demo port-forward service/sample-app 8080:8080
 ```
 
-Then open [http://localhost:3000/api/health](http://localhost:3000/api/health).
+Open [http://localhost:8080/](http://localhost:8080/) for the app or
+[http://localhost:8080/health](http://localhost:8080/health) for its health
+response. To restore the previous working Kubernetes revision, run
+`kubectl -n shipit-demo rollout undo deployment/sample-app`; inspect the
+rollout with `kubectl -n shipit-demo rollout status deployment/sample-app`.

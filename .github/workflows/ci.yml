@@ -50,6 +50,9 @@ jobs:
           SHIPIT_WEBHOOK_SECRET: ci-build-only-placeholder-012345678901234567890123456
         run: pnpm build
 
+      - name: Build sample-app container
+        run: docker build --tag shipit-sample-app:ci --file examples/sample-app/Dockerfile examples/sample-app
+
   publish-image:
     name: Publish image to GHCR
     needs: verify
@@ -63,6 +66,7 @@ jobs:
       cancel-in-progress: false
     outputs:
       image_digest: ${{ steps.publish.outputs.image_digest }}
+      sample_image_digest: ${{ steps.publish.outputs.sample_image_digest }}
     steps:
       - name: Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -111,6 +115,28 @@ jobs:
           fi
           echo "image_digest=$digest" >> "$GITHUB_OUTPUT"
 
+          sample_image="ghcr.io/${GITHUB_REPOSITORY,,}-sample-app"
+          sample_tags=( --tag "$sample_image:sha-$GITHUB_SHA" )
+          if [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
+            sample_tags+=( --tag "$sample_image:latest" )
+          elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            sample_tags+=( --tag "$sample_image:$GITHUB_REF_NAME" )
+          fi
+
+          docker buildx build \
+            --build-arg "APP_VERSION=$GITHUB_SHA" \
+            --file examples/sample-app/Dockerfile \
+            "${sample_tags[@]}" \
+            --metadata-file "$RUNNER_TEMP/sample-image-metadata.json" \
+            --push examples/sample-app
+
+          sample_digest="$(jq -r '.["containerimage.digest"] // empty' "$RUNNER_TEMP/sample-image-metadata.json")"
+          if [[ ! "$sample_digest" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+            echo "Buildx did not return a valid sample-app image digest."
+            exit 1
+          fi
+          echo "sample_image_digest=$sample_digest" >> "$GITHUB_OUTPUT"
+
   deploy-production:
     name: Deploy production to Kubernetes
     needs: publish-image
@@ -136,10 +162,10 @@ jobs:
           SHIPIT_WEBHOOK_URL: ${{ vars.SHIPIT_WEBHOOK_URL }}
           SHIPIT_WEBHOOK_SECRET: ${{ secrets.SHIPIT_WEBHOOK_SECRET }}
           SHIPIT_PROJECT_SLUG: ${{ vars.SHIPIT_PROJECT_SLUG }}
-          IMAGE_DIGEST: ${{ needs.publish-image.outputs.image_digest }}
+          IMAGE_DIGEST: ${{ needs.publish-image.outputs.sample_image_digest }}
           GITHUB_SHA: ${{ github.sha }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
         run: |
-          IMAGE_REF="ghcr.io/${GITHUB_REPOSITORY,,}@$IMAGE_DIGEST" \
+          IMAGE_REF="ghcr.io/${GITHUB_REPOSITORY,,}-sample-app@$IMAGE_DIGEST" \
             ./deploy/kubernetes/deploy-with-events.sh

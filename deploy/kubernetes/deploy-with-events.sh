@@ -27,7 +27,7 @@ send_event() {
   body=$(jq -cn \
     --arg eventId "$event_id" \
     --arg projectSlug "$SHIPIT_PROJECT_SLUG" \
-    --arg environment PRODUCTION \
+    --arg environment "${SHIPIT_ENVIRONMENT:-PRODUCTION}" \
     --arg commitSha "$GITHUB_SHA" \
     --arg imageRef "$IMAGE_REF" \
     --arg status "$status" \
