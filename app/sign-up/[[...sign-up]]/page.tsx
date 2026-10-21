@@ -1,12 +1,13 @@
 import { Suspense } from "react";
 import { SignUp } from "@clerk/nextjs";
+import { AuthFrame, clerkAppearance } from "../../../components/auth/AuthFrame";
 
 export default function SignUpPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center">
+    <AuthFrame mode="sign-up">
       <Suspense fallback={<div aria-hidden="true" className="h-96 w-96" />}>
-        <SignUp />
+        <SignUp appearance={clerkAppearance} />
       </Suspense>
-    </div>
+    </AuthFrame>
   );
 }
