@@ -82,6 +82,8 @@ Run the repository's dependency-free webhook checks with `pnpm test`.
 Docker Compose uses the existing `.env` file; no separate Compose env file is
 needed. Copy `.env.example` to `.env` once if you have not already done so, then
 put your Clerk keys and webhook secrets in `.env`. Do not commit that file.
+The public Clerk publishable key is used during the image build; the secret keys
+are supplied to the running container only.
 
 Build the app image and start it with a local PostgreSQL database:
 
