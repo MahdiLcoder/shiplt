@@ -19,7 +19,6 @@ trap 'rm -f "$rendered_manifest"' EXIT
 
 sed "s#ghcr.io/example/shiplt:latest#$image_ref#g" "$manifest" > "$rendered_manifest"
 
-kubectl apply -f "$script_dir/namespace.yaml"
 kubectl apply -f "$rendered_manifest"
 
 if ! kubectl -n shipit rollout status deployment/shipit --timeout=180s; then

@@ -135,6 +135,36 @@ them at runtime in the deployment platform. GitHub Actions uses its provided
 `GITHUB_TOKEN`; the publish job needs package write permission enabled for the
 repository. Pull requests never receive package publishing permission.
 
+## Automatic production deployment
+
+After verification and GHCR publishing succeed on `main`, the workflow deploys
+the pushed image by its digest to the `production` GitHub Environment. Version
+tags publish images but do not deploy them automatically. Configure these
+Environment values in GitHub before enabling the workflow:
+
+- Variables: `SHIPIT_PROJECT_SLUG` (the existing ShipIt project slug) and
+  `SHIPIT_WEBHOOK_URL` (the full `/api/webhooks/deployments` endpoint URL).
+- Secrets: `KUBECONFIG_B64` (base64 encoded kubeconfig for a restricted deploy
+  identity) and `SHIPIT_WEBHOOK_SECRET` (the same HMAC secret configured for
+  ShipIt's runtime).
+
+Set required reviewers and deployment branch restrictions on the `production`
+Environment in GitHub. Have a cluster administrator create the namespace once
+with `kubectl apply -f deploy/kubernetes/namespace.yaml`; scope the deployment
+identity to that namespace and only the permissions needed to update/read the
+application Deployment, ConfigMap, and Service, inspect pods, and read pod logs.
+For clusters that support GitHub OpenID Connect, use a short-lived identity
+instead of a long-lived kubeconfig secret.
+
+Before the first deployment, create the Kubernetes `shipit-secrets` Secret as
+described below and make the GHCR image pullable by the cluster. The target
+project must already have a `PRODUCTION` environment in ShipIt. The workflow
+sends signed `RUNNING` and final `SUCCEEDED` or `FAILED` events using the
+existing HMAC webhook contract; retry event IDs are stable for each GitHub run
+attempt so ShipIt can safely deduplicate them. If webhook delivery fails after
+a successful rollout, the workflow fails and the rollout must be reconciled
+manually from the Kubernetes state and GitHub Actions log.
+
 ## Kubernetes deployment
 
 The starter manifests run two ShipIt replicas behind an internal ClusterIP
