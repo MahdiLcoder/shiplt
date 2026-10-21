@@ -1,8 +1,17 @@
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 
-export default async function DashboardPage() {
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<DashboardFallback />}>
+      <DashboardContent />
+    </Suspense>
+  );
+}
+
+async function DashboardContent() {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
 
@@ -47,6 +56,26 @@ export default async function DashboardPage() {
           Create your first project
         </Link>
       </section>
+    </main>
+  );
+}
+
+function DashboardFallback() {
+  return (
+    <main
+      aria-label="Loading dashboard"
+      className="mx-auto w-full max-w-6xl animate-pulse px-5 py-8 sm:px-8 lg:px-10"
+    >
+      <div className="mb-8 space-y-3">
+        <div className="h-4 w-24 rounded bg-slate-200" />
+        <div className="h-9 w-48 rounded bg-slate-200" />
+        <div className="h-4 w-72 max-w-full rounded bg-slate-200" />
+      </div>
+      <div className="rounded-2xl border border-slate-200 bg-white px-6 py-14 shadow-sm">
+        <div className="mx-auto h-14 w-14 rounded-2xl bg-indigo-50" />
+        <div className="mx-auto mt-5 h-6 w-64 max-w-full rounded bg-slate-200" />
+        <div className="mx-auto mt-3 h-4 w-80 max-w-full rounded bg-slate-100" />
+      </div>
     </main>
   );
 }
