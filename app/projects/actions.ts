@@ -10,6 +10,7 @@ import {
   saveRepository,
   updateProject,
 } from "../../lib/data/projects";
+import { createRollback } from "../../lib/data/deployments";
 import { projectIdSchema, projectSchema } from "../../lib/validation/project";
 import {
   environmentSchema,
@@ -141,4 +142,22 @@ export async function saveEnvironmentAction(formData: FormData) {
   if (!savedEnvironment) redirect("/projects?error=not-found");
   revalidatePath(`/projects/${projectId.data}`);
   redirect(`/projects/${projectId.data}`);
+}
+
+export async function createRollbackAction(formData: FormData) {
+  const { userId } = await auth();
+  if (!userId) redirect("/sign-in");
+  const projectId = projectIdSchema.safeParse(formData.get("projectId"));
+  const deploymentId = projectIdSchema.safeParse(formData.get("deploymentId"));
+  if (!projectId.success || !deploymentId.success) redirect("/projects?error=not-found");
+  let rollback;
+  try {
+    rollback = await createRollback(userId, projectId.data, deploymentId.data);
+  } catch {
+    redirect(`/projects/${projectId.data}?error=rollback-save`);
+  }
+  if (!rollback) redirect(`/projects/${projectId.data}?error=rollback-invalid`);
+  revalidatePath("/dashboard");
+  revalidatePath(`/projects/${projectId.data}`);
+  redirect(`/projects/${projectId.data}?rollback=recorded`);
 }

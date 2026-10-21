@@ -3,10 +3,12 @@ import { auth } from "@clerk/nextjs/server";
 import { notFound, redirect } from "next/navigation";
 import {
   archiveProjectAction,
+  createRollbackAction,
   saveEnvironmentAction,
   saveRepositoryAction,
 } from "../actions";
 import { getProjectWorkspace } from "../../../lib/data/projects";
+import { listProjectAuditLogs, listProjectDeployments } from "../../../lib/data/deployments";
 
 const environmentTypes = ["DEVELOPMENT", "STAGING", "PRODUCTION"] as const;
 
@@ -15,15 +17,21 @@ export default async function ProjectPage({
   searchParams,
 }: {
   params: Promise<{ projectId: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; rollback?: string }>;
 }) {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
 
   const [{ projectId }, query] = await Promise.all([params, searchParams]);
   let workspace;
+  let deployments;
+  let auditLogs;
   try {
-    workspace = await getProjectWorkspace(userId, projectId);
+    [workspace, deployments, auditLogs] = await Promise.all([
+      getProjectWorkspace(userId, projectId),
+      listProjectDeployments(userId, projectId),
+      listProjectAuditLogs(userId, projectId),
+    ]);
   } catch {
     return (
       <main className="mx-auto max-w-4xl px-5 py-8 sm:px-8 lg:px-10">
@@ -62,6 +70,9 @@ export default async function ProjectPage({
           The project could not be archived. Please try again.
         </p>
       )}
+
+      {query.rollback === "recorded" && <p role="status" className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">Rollback recorded and awaiting execution by your deployment system.</p>}
+      {query.error?.startsWith("rollback-") && <p role="alert" className="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{query.error === "rollback-invalid" ? "Only a successful deployment in this project can be rolled back." : "The rollback record could not be created. Please try again."}</p>}
 
       {query.error?.startsWith("repository-") && (
         <p role="alert" className="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -145,6 +156,43 @@ export default async function ProjectPage({
             );
           })}
         </div>
+      </section>
+
+      <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="mb-5">
+          <h2 className="font-semibold">Deployment history</h2>
+          <p className="mt-1 text-sm text-slate-500">Incoming deployment events and their ordered timeline.</p>
+        </div>
+        {deployments?.length ? <ul className="divide-y divide-slate-100">
+          {deployments.map((deployment) => <li key={deployment.id} className="py-5 first:pt-0 last:pb-0">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="font-semibold">{deployment.environment?.type ?? "Environment"}</h3>
+                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium">{deployment.status}</span>
+                </div>
+                <p className="mt-2 break-all font-mono text-xs text-slate-500">Commit {deployment.commitSha} · {deployment.imageRef}</p>
+                {deployment.rollbackOfId && <p className="mt-1 text-xs text-slate-500">Rollback record for deployment {deployment.rollbackOfId}</p>}
+                <p className="mt-2 text-xs text-slate-500">Started {deployment.startedAt ? new Date(deployment.startedAt).toLocaleString() : "—"} · Finished {deployment.finishedAt ? new Date(deployment.finishedAt).toLocaleString() : "—"}</p>
+                {deployment.startedAt && deployment.finishedAt && <p className="mt-1 text-xs text-slate-500">Duration {Math.max(0, Math.round((Date.parse(deployment.finishedAt) - Date.parse(deployment.startedAt)) / 1000))} seconds</p>}
+                {deployment.failureMessage && <p className="mt-2 text-sm text-red-700">{deployment.failureMessage}</p>}
+                {deployment.events.length > 0 && <ol className="mt-4 space-y-2 border-l border-slate-200 pl-4">
+                  {deployment.events.map((event) => <li key={event.id} className="text-xs text-slate-600"><time dateTime={event.occurredAt}>{new Date(event.occurredAt).toLocaleString()}</time> · {event.status}{event.message ? ` — ${event.message}` : ""}</li>)}
+                </ol>}
+              </div>
+              {deployment.status === "SUCCEEDED" && <form action={createRollbackAction}>
+                <input type="hidden" name="projectId" value={project.id} />
+                <input type="hidden" name="deploymentId" value={deployment.id} />
+                <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Record rollback</button>
+              </form>}
+            </div>
+          </li>)}
+        </ul> : <p className="rounded-lg bg-slate-50 p-4 text-sm text-slate-600">No deployments have been reported for this project yet.</p>}
+      </section>
+
+      <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="font-semibold">Project activity</h2>
+        {auditLogs?.length ? <ul className="mt-4 divide-y divide-slate-100">{auditLogs.map((entry) => <li key={entry.id} className="py-3 text-sm"><span className="font-medium">{entry.action.replaceAll(".", " ")}</span><time className="ml-2 text-xs text-slate-500" dateTime={entry.createdAt}>{new Date(entry.createdAt).toLocaleString()}</time></li>)}</ul> : <p className="mt-3 text-sm text-slate-500">No activity recorded yet.</p>}
       </section>
 
       <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">

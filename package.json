@@ -11,6 +11,8 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "db:seed": "node --experimental-strip-types scripts/seed.ts",
+    "send:test-event": "tsc --module commonjs --moduleResolution node --target es2022 --outDir .script-build --rootDir . --skipLibCheck --esModuleInterop scripts/send-test-event.ts && node .script-build/scripts/send-test-event.js",
+    "test": "tsc --module commonjs --moduleResolution node --target es2022 --outDir .test-build --rootDir . --skipLibCheck --esModuleInterop lib/webhooks/signature.ts lib/webhooks/deployment-policy.ts lib/validation/deployment-event.ts && node tests/webhook-validation.test.mjs",
     "contract:emit": "prisma contract emit",
     "db:init": "prisma db init",
     "db:update": "prisma db update",

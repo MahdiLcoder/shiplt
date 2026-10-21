@@ -47,6 +47,14 @@ export async function createProject(ownerId: string, input: ProjectInput) {
       });
     }
 
+    await tx.orm.public.AuditLog.create({
+      actorId: ownerId,
+      action: "project.created",
+      entityType: "Project",
+      entityId: project.id,
+      metadata: { slug: project.slug },
+    });
+
     return project;
   });
 }
@@ -56,12 +64,18 @@ export async function updateProject(
   id: string,
   input: ProjectInput,
 ) {
-  return db.orm.public.Project.where({ id, ownerId, archivedAt: null }).update(input);
+  return db.transaction(async (tx) => {
+    const project = await tx.orm.public.Project.where({ id, ownerId, archivedAt: null }).update(input);
+    if (project) await tx.orm.public.AuditLog.create({ actorId: ownerId, action: "project.updated", entityType: "Project", entityId: id, metadata: { slug: project.slug } });
+    return project;
+  });
 }
 
 export async function archiveProject(ownerId: string, id: string) {
-  return db.orm.public.Project.where({ id, ownerId, archivedAt: null }).update({
-    archivedAt: new Date().toISOString(),
+  return db.transaction(async (tx) => {
+    const project = await tx.orm.public.Project.where({ id, ownerId, archivedAt: null }).update({ archivedAt: new Date().toISOString() });
+    if (project) await tx.orm.public.AuditLog.create({ actorId: ownerId, action: "project.archived", entityType: "Project", entityId: id, metadata: {} });
+    return project;
   });
 }
 
@@ -70,25 +84,16 @@ export async function saveRepository(
   projectId: string,
   input: RepositoryInput,
 ) {
-  const project = await getProject(ownerId, projectId);
-  if (!project) return null;
-
-  const existing = await db.orm.public.Repository.first({ projectId: project.id });
-  const url = `https://github.com/${input.owner}/${input.name}`;
-
-  if (existing) {
-    return db.orm.public.Repository.where({ projectId: project.id }).update({
-      owner: input.owner,
-      name: input.name,
-      url,
-    });
-  }
-
-  return db.orm.public.Repository.create({
-    projectId: project.id,
-    owner: input.owner,
-    name: input.name,
-    url,
+  return db.transaction(async (tx) => {
+    const project = await tx.orm.public.Project.where({ id: projectId, ownerId, archivedAt: null }).first();
+    if (!project) return null;
+    const existing = await tx.orm.public.Repository.first({ projectId: project.id });
+    const url = `https://github.com/${input.owner}/${input.name}`;
+    const repository = existing
+      ? await tx.orm.public.Repository.where({ projectId: project.id }).update({ owner: input.owner, name: input.name, url })
+      : await tx.orm.public.Repository.create({ projectId: project.id, owner: input.owner, name: input.name, url });
+    if (repository) await tx.orm.public.AuditLog.create({ actorId: ownerId, action: existing ? "repository.updated" : "repository.created", entityType: "Project", entityId: project.id, metadata: { owner: input.owner, name: input.name } });
+    return repository;
   });
 }
 
@@ -97,28 +102,15 @@ export async function saveEnvironment(
   projectId: string,
   input: EnvironmentInput,
 ) {
-  const project = await getProject(ownerId, projectId);
-  if (!project) return null;
-
-  const existing = await db.orm.public.Environment.first({
-    projectId: project.id,
-    type: input.type,
-  });
-  const values = {
-    deployTarget: input.deployTarget,
-    configRef: input.configRef,
-  };
-
-  if (existing) {
-    return db.orm.public.Environment.where({
-      projectId: project.id,
-      type: input.type,
-    }).update(values);
-  }
-
-  return db.orm.public.Environment.create({
-    projectId: project.id,
-    type: input.type,
-    ...values,
+  return db.transaction(async (tx) => {
+    const project = await tx.orm.public.Project.where({ id: projectId, ownerId, archivedAt: null }).first();
+    if (!project) return null;
+    const existing = await tx.orm.public.Environment.first({ projectId: project.id, type: input.type });
+    const values = { deployTarget: input.deployTarget, configRef: input.configRef };
+    const environment = existing
+      ? await tx.orm.public.Environment.where({ projectId: project.id, type: input.type }).update(values)
+      : await tx.orm.public.Environment.create({ projectId: project.id, type: input.type, ...values });
+    if (environment) await tx.orm.public.AuditLog.create({ actorId: ownerId, action: "environment.updated", entityType: "Project", entityId: project.id, metadata: { type: input.type, deployTarget: input.deployTarget, configRef: input.configRef } });
+    return environment;
   });
 }
