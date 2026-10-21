@@ -153,8 +153,9 @@ Environment in GitHub. Have a cluster administrator create the namespace once
 with `kubectl apply -f deploy/kubernetes/namespace.yaml`; scope the deployment
 identity to that namespace and only the permissions needed to update/read the
 application Deployment, ConfigMap, and Service, inspect pods, and read pod logs.
-For clusters that support GitHub OpenID Connect, use a short-lived identity
-instead of a long-lived kubeconfig secret.
+The current workflow expects `KUBECONFIG_B64`; switching to GitHub OpenID
+Connect requires replacing that credential setup with the cluster provider's
+OIDC login action. Prefer that short-lived identity where supported.
 
 Before the first deployment, create the Kubernetes `shipit-secrets` Secret as
 described below and make the GHCR image pullable by the cluster. The target
