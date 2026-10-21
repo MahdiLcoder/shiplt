@@ -76,3 +76,44 @@ Configure the Clerk webhook sender for `/api/webhooks/clerk` and set its signing
 secret in `CLERK_WEBHOOK_SIGNING_SECRET`.
 
 Run the repository's dependency-free webhook checks with `pnpm test`.
+
+## Run with Docker Compose
+
+Docker Compose uses the existing `.env` file; no separate Compose env file is
+needed. Copy `.env.example` to `.env` once if you have not already done so, then
+put your Clerk keys and webhook secrets in `.env`. Do not commit that file.
+
+Build the app image and start it with a local PostgreSQL database:
+
+```bash
+docker compose up --build
+```
+
+Open [http://localhost:3000](http://localhost:3000). Compose waits for
+PostgreSQL to report healthy before starting ShipIt, and the app exposes
+`/api/health` for a simple container health check. Inside Compose, the app uses
+the `db` service name for PostgreSQL. Your `.env` remains unchanged and can
+continue to use `localhost` for running ShipIt directly on your computer.
+
+Database migrations are not run automatically. After the image has been built,
+apply the repository's migrations explicitly with:
+
+```bash
+docker compose run --rm app pnpm migrate
+```
+
+Useful commands:
+
+```bash
+docker compose logs -f app       # Follow app logs
+docker compose ps                # Check service and health status
+docker compose down              # Stop services; keep database data
+```
+
+To delete the local database and start with an empty one, run
+`docker compose down --volumes`. **This permanently deletes the PostgreSQL data
+stored by this Compose project.**
+
+The Compose PostgreSQL credentials are fixed local development values and must
+not be reused in production. This setup builds and runs the app container; it
+does not configure a production registry or Kubernetes deployment.
