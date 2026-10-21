@@ -1,13 +1,14 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-export function AuthFrame({ children, mode }: { children: ReactNode; mode: "sign-in" | "sign-up" }) {
-  return <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background px-5 py-10 text-foreground"><div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(ellipse_at_top,color-mix(in_srgb,var(--accent)_16%,transparent),transparent_70%)]" /><header className="relative z-10 mb-7 text-center"><Link href="/" className="inline-flex items-center gap-2.5"><span className="grid size-8 place-items-center rounded-lg bg-accent text-sm font-bold text-white">S</span><span className="text-sm font-semibold tracking-tight">ShipIt</span></Link><p className="mt-3 text-sm text-muted">From commit to deployment, all in one place.</p></header><div className="relative z-10 w-full max-w-[440px]">{children}</div><p className="relative z-10 mt-6 text-xs text-muted">{mode === "sign-in" ? "New to ShipIt?" : "Already have an account?"} <Link href={mode === "sign-in" ? "/sign-up" : "/sign-in"} className="font-medium text-accent hover:underline">{mode === "sign-in" ? "Get started" : "Sign in"}</Link></p></main>;
+export function AuthFrame({ children }: { children: ReactNode }) {
+  return <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background px-5 py-10 text-foreground"><div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(ellipse_at_top,color-mix(in_srgb,var(--accent)_16%,transparent),transparent_70%)]" /><header className="relative z-10 mb-7 text-center"><Link href="/" className="inline-flex items-center gap-2.5"><span className="grid size-8 place-items-center rounded-lg bg-accent text-sm font-bold text-white">S</span><span className="text-sm font-semibold tracking-tight">ShipIt</span></Link><p className="mt-3 text-sm text-muted">From commit to deployment, all in one place.</p></header><div className="relative z-10 w-full max-w-[440px]">{children}</div></main>;
 }
 
 export const clerkAppearance = {
   variables: {
     colorPrimary: "var(--accent)",
+    colorPrimaryForeground: "#ffffff",
     colorBackground: "var(--surface)",
     colorForeground: "var(--foreground)",
     colorMutedForeground: "var(--muted)",

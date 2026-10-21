@@ -80,7 +80,7 @@ function EnvironmentTile({ type, item, good }: { type: EnvironmentType; item: { 
 
 function StatusMark({ status }: { status: DeploymentStatus }) {
   const symbol = status === "SUCCEEDED" ? "✓" : status === "FAILED" ? "×" : status === "RUNNING" ? "◌" : status === "CANCELLED" ? "⊘" : "◷";
-  const color = status === "SUCCEEDED" ? "text-[var(--success)]" : status === "FAILED" ? "text-[var(--danger)]" : status === "RUNNING" ? "text-blue-400" : status === "CANCELLED" ? "text-[var(--warning)]" : "text-muted";
+  const color = status === "SUCCEEDED" ? "text-[var(--success)]" : status === "FAILED" ? "text-[var(--danger)]" : status === "RUNNING" ? "text-[var(--info)]" : status === "CANCELLED" ? "text-[var(--warning)]" : "text-muted";
   return <span aria-hidden="true" className={`grid size-8 shrink-0 place-items-center rounded-lg bg-[var(--surface-raised)] text-sm ${color}`}>{symbol}</span>;
 }
 

@@ -4,7 +4,7 @@ import { AuthFrame, clerkAppearance } from "../../../components/auth/AuthFrame";
 
 export default function SignInPage() {
   return (
-    <AuthFrame mode="sign-in">
+    <AuthFrame>
       <Suspense fallback={<div aria-hidden="true" className="h-96 w-96" />}>
         <SignIn appearance={clerkAppearance} />
       </Suspense>

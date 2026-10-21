@@ -13,6 +13,7 @@
   --success: #43c98b;
   --warning: #e7ad53;
   --danger: #ef6b72;
+  --info: #7bb5ff;
 }
 
 @theme inline {
@@ -40,6 +41,7 @@
     --success: #14865a;
     --warning: #a66d14;
     --danger: #c63d4a;
+    --info: #2456b8;
   }
 }
 
@@ -61,6 +63,7 @@
   --success: #14865a;
   --warning: #a66d14;
   --danger: #c63d4a;
+  --info: #2456b8;
 }
 
 * { border-color: var(--border); }

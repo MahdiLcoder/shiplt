@@ -26,7 +26,7 @@ export function Card({ children, className = "" }: { children: ReactNode; classN
 
 const badgeVariants: Record<string, string> = {
   PENDING: "border-border bg-[var(--surface-raised)] text-muted",
-  RUNNING: "border-blue-400/25 bg-blue-400/10 text-blue-400",
+  RUNNING: "border-[color-mix(in_srgb,var(--info)_30%,transparent)] bg-[color-mix(in_srgb,var(--info)_10%,transparent)] text-[var(--info)]",
   SUCCEEDED: "border-[color-mix(in_srgb,var(--success)_30%,transparent)] bg-[color-mix(in_srgb,var(--success)_10%,transparent)] text-[var(--success)]",
   FAILED: "border-[color-mix(in_srgb,var(--danger)_30%,transparent)] bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] text-[var(--danger)]",
   CANCELLED: "border-[color-mix(in_srgb,var(--warning)_30%,transparent)] bg-[color-mix(in_srgb,var(--warning)_10%,transparent)] text-[var(--warning)]",
