@@ -4,6 +4,10 @@ import { deploymentEventSchema } from "../../../../lib/validation/deployment-eve
 import { verifyBodySignature } from "../../../../lib/webhooks/signature";
 
 export async function POST(request: Request) {
+  if (!env.SHIPIT_WEBHOOK_SECRET || env.SHIPIT_WEBHOOK_SECRET.length < 32) {
+    return Response.json({ error: "Deployment webhook is not configured." }, { status: 503 });
+  }
+
   const rawBody = await request.text();
   if (!verifyBodySignature(rawBody, request.headers.get("x-shipit-signature"), env.SHIPIT_WEBHOOK_SECRET)) {
     return Response.json({ error: "Invalid signature." }, { status: 401 });

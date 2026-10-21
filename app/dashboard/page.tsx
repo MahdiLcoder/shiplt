@@ -21,23 +21,29 @@ async function DashboardContent() {
   await io();
   let projects;
   try {
-    projects = await getDashboardDeployments(userId);
+    projects = await getDashboardDeployments(userId, true);
   } catch {
     return <main className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8"><h1 className="text-2xl font-semibold">Dashboard</h1><p role="alert" className="mt-6 rounded-xl border border-[color-mix(in_srgb,var(--danger)_30%,transparent)] bg-[color-mix(in_srgb,var(--danger)_9%,transparent)] p-4 text-sm text-[var(--danger)]">Deployment activity could not be loaded. Please try again.</p></main>;
   }
 
-  const all = projects.flatMap(({ project, environments, deployments }) => deployments.map((deployment) => ({ project, environment: environments.find((item) => item.id === deployment.environmentId), deployment })));
+  const all = projects.flatMap(({ project, environments, deployments }) => deployments.map((deployment) => ({ project, environment: environments.find((item) => item.id === deployment.environmentId), deployment }))).sort((a, b) => Date.parse(b.deployment.createdAt) - Date.parse(a.deployment.createdAt));
   const latest = new Map<string, (typeof all)[number]>();
   const latestGood = new Map<string, (typeof all)[number]>();
-  for (const item of all) {
-    const key = `${item.project.id}:${item.deployment.environmentId}`;
-    if (!latest.has(key)) latest.set(key, item);
-    if (item.deployment.status === "SUCCEEDED" && !latestGood.has(key)) latestGood.set(key, item);
+  for (const { project, latestByEnvironment, latestSuccessful } of projects) {
+    for (const deployment of latestByEnvironment) {
+      const key = `${project.id}:${deployment.environmentId}`;
+      const environment = projects.find((item) => item.project.id === project.id)?.environments.find((item) => item.id === deployment.environmentId);
+      latest.set(key, { project, environment, deployment });
+    }
+    for (const deployment of latestSuccessful) {
+      const key = `${project.id}:${deployment.environmentId}`;
+      const environment = projects.find((item) => item.project.id === project.id)?.environments.find((item) => item.id === deployment.environmentId);
+      latestGood.set(key, { project, environment, deployment });
+    }
   }
-  const weekAgo = startOfWindow();
-  const recent = all.filter(({ deployment }) => Date.parse(deployment.createdAt) >= weekAgo);
-  const successful = recent.filter(({ deployment }) => deployment.status === "SUCCEEDED").length;
-  const successRate = recent.length ? `${Math.round(successful / recent.length * 100)}%` : "—";
+  const recentCount = projects.reduce((count, item) => count + item.recentCount, 0);
+  const recentSuccessfulCount = projects.reduce((count, item) => count + item.recentSuccessfulCount, 0);
+  const successRate = recentCount ? `${Math.round(recentSuccessfulCount / recentCount * 100)}%` : "—";
   const failing = [...latest.values()].filter(({ deployment }) => deployment.status === "FAILED").length;
 
   return <main className="mx-auto w-full max-w-6xl px-5 py-7 sm:px-8 lg:px-10">
@@ -45,7 +51,7 @@ async function DashboardContent() {
     {projects.length === 0 ? <Card><EmptyState title="Your workspace is ready" description="Create your first project to see environments, deployment health, and recent releases together." action={<Link href="/projects/new" className="inline-flex h-9 items-center rounded-lg bg-accent px-3.5 text-sm font-medium text-white">Create your first project</Link>} /></Card> : <>
       <section aria-label="Workspace summary" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <SummaryCard label="Projects" value={String(projects.length)} detail="Active in this workspace" icon="◇" />
-        <SummaryCard label="Deployments · 7 days" value={String(recent.length)} detail="Across all environments" icon="↗" />
+        <SummaryCard label="Deployments · 7 days" value={String(recentCount)} detail="Across all environments" icon="↗" />
         <SummaryCard label="Success rate" value={successRate} detail="Over the last 7 days" icon="✓" accent="success" />
         <SummaryCard label="Currently failing" value={String(failing)} detail={failing ? "Latest environment status" : "All environments clear"} icon="!" accent={failing ? "danger" : "success"} />
       </section>
@@ -88,7 +94,6 @@ function humanEnvironment(value?: string) {
   return value === "DEVELOPMENT" ? "Development" : value === "STAGING" ? "Staging" : value === "PRODUCTION" ? "Production" : "Environment";
 }
 function imageTag(value: string) { return value.split("/").at(-1) ?? value; }
-function startOfWindow() { return Date.now() - 7 * 24 * 60 * 60 * 1000; }
 function relativeTime(value: string) {
   const minutes = Math.max(0, Math.floor((Date.now() - Date.parse(value)) / 60_000));
   if (minutes < 1) return "Just now";

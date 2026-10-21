@@ -1,0 +1,44 @@
+[
+  {
+    "id": "unique.Deployment.Deployment_projectId_environmentId_runId_key",
+    "label": "Add unique constraint on \"Deployment\" (projectId, environmentId, runId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "Deployment_projectId_environmentId_runId_key",
+        "table": "Deployment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"Deployment_projectId_environmentId_runId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "Deployment_projectId_environmentId_runId_key",
+          "public",
+          "\"public\".\"Deployment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"Deployment_projectId_environmentId_runId_key\"",
+        "sql": "ALTER TABLE \"public\".\"Deployment\" ADD CONSTRAINT \"Deployment_projectId_environmentId_runId_key\" UNIQUE (\"projectId\", \"environmentId\", \"runId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"Deployment_projectId_environmentId_runId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "Deployment_projectId_environmentId_runId_key",
+          "public",
+          "\"public\".\"Deployment\""
+        ]
+      }
+    ]
+  }
+]

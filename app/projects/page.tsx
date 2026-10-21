@@ -20,10 +20,10 @@ async function ProjectsContent({ searchParams }: { searchParams: Promise<{ error
   let projects;
   try {
     const rows = await getDashboardDeployments(userId);
-    projects = await Promise.all(rows.map(async ({ project, environments, deployments }) => {
+    projects = await Promise.all(rows.map(async ({ project, environments, latestByEnvironment: latestDeployments }) => {
       const workspace = await getProjectWorkspace(userId, project.id);
-      const latestByEnvironment = new Map<string, (typeof deployments)[number]>();
-      for (const deployment of deployments) if (!latestByEnvironment.has(deployment.environmentId)) latestByEnvironment.set(deployment.environmentId, deployment);
+      const latestByEnvironment = new Map<string, (typeof latestDeployments)[number]>();
+      for (const deployment of latestDeployments) latestByEnvironment.set(deployment.environmentId, deployment);
       const items: ProjectListItem["environments"] = environments.map((environment) => {
         const deployment = latestByEnvironment.get(environment.id);
         return { type: environment.type, deployment: deployment ? { status: deployment.status, createdAt: deployment.createdAt } : null };

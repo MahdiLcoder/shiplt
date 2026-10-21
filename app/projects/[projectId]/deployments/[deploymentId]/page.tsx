@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import type { DeploymentStatus } from "../../../../generated/prisma/enums";
 import { io } from "next/cache";
 import { createRollbackAction } from "../../../actions";
-import { listProjectDeployments } from "../../../../../lib/data/deployments";
+import { getLatestEnvironmentDeployment, getProjectDeployment } from "../../../../../lib/data/deployments";
 import { Card, EmptyState, StatusBadge } from "../../../../../components/ui/primitives";
 import { CopyButton } from "../../../../../components/ui/CopyButton";
 import { ConfirmAction } from "../../../../../components/ui/ConfirmAction";
@@ -21,11 +21,9 @@ async function DeploymentContent({ params }: DeploymentDetailProps) {
   if (!userId) redirect("/sign-in");
   const { projectId, deploymentId } = await params;
   await io();
-  const deployments = await listProjectDeployments(userId, projectId);
-  if (!deployments) notFound();
-  const deployment = deployments.find((item) => item.id === deploymentId);
+  const deployment = await getProjectDeployment(userId, projectId, deploymentId);
   if (!deployment) notFound();
-  const current = deployments.find((item) => item.environmentId === deployment.environmentId);
+  const current = await getLatestEnvironmentDeployment(userId, projectId, deployment.environmentId);
   const mayRollback = deployment.status === "SUCCEEDED" && current?.id !== deployment.id;
 
   return <main className="mx-auto w-full max-w-5xl px-5 py-7 sm:px-8 lg:px-10">

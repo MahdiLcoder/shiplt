@@ -102,6 +102,7 @@ model Deployment {
   @@index([projectId, createdAt])
   @@index([environmentId, createdAt])
   @@index([status])
+  @@unique([projectId, environmentId, runId])
 }
 
 model DeploymentEvent {

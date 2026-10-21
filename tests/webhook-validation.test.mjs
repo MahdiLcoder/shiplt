@@ -18,7 +18,10 @@ test("deployment webhook signature is bound to the exact raw body", () => {
   const secret = "test-secret-with-sufficient-length-123";
   const signed = signBody(raw, secret);
   assert.equal(verifyBodySignature(raw, `sha256=${signed}`, secret), true);
+  assert.equal(verifyBodySignature(raw, signed, secret), true);
+  assert.equal(verifyBodySignature(raw, null, secret), false);
   assert.equal(verifyBodySignature(`${raw} `, signed, secret), false);
+  assert.equal(verifyBodySignature(raw, `sha256=${signed.slice(1)}`, secret), false);
   assert.equal(verifyBodySignature(raw, "bad", secret), false);
 });
 
@@ -27,13 +30,18 @@ test("deployment webhook payload validates supported enums and ISO timestamps", 
   assert.equal(deploymentEventSchema.safeParse(valid).success, true);
   assert.equal(deploymentEventSchema.safeParse({ ...valid, status: "DEPLOYED" }).success, false);
   assert.equal(deploymentEventSchema.safeParse({ ...valid, occurredAt: "yesterday" }).success, false);
+  assert.equal(deploymentEventSchema.safeParse({ ...valid, projectSlug: "Invalid Slug" }).success, false);
+  assert.equal(deploymentEventSchema.safeParse({ ...valid, runAttempt: 0 }).success, false);
+  assert.equal(deploymentEventSchema.safeParse({ ...valid, eventId: "" }).success, false);
 });
 
 test("deployment transition policy blocks regressions, terminal reversions, and stale events", () => {
   assert.equal(mayAdvanceDeployment("PENDING", null, "RUNNING", "2026-10-21T00:00:01Z"), true);
+  assert.equal(mayAdvanceDeployment("PENDING", null, "SUCCEEDED", "2026-10-21T00:00:01Z"), true);
   assert.equal(mayAdvanceDeployment("RUNNING", "2026-10-21T00:00:02Z", "PENDING", "2026-10-21T00:00:03Z"), false);
   assert.equal(mayAdvanceDeployment("RUNNING", "2026-10-21T00:00:02Z", "SUCCEEDED", "2026-10-21T00:00:01Z"), false);
   assert.equal(mayAdvanceDeployment("SUCCEEDED", "2026-10-21T00:00:02Z", "RUNNING", "2026-10-21T00:00:03Z"), false);
+  assert.equal(mayAdvanceDeployment("FAILED", "2026-10-21T00:00:02Z", "CANCELLED", "2026-10-21T00:00:03Z"), false);
 });
 
 console.log(`${passed} webhook checks passed.`);

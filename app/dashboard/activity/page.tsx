@@ -14,16 +14,21 @@ async function ActivityContent() {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
   await io();
-  const projects = await getDashboardDeployments(userId);
-  const deployments = projects.flatMap(({ project, environments, deployments }) => deployments.map((deployment) => ({
-    project,
-    environment: environments.find((item) => item.id === deployment.environmentId),
-    deployment,
-  }))).sort((a, b) => Date.parse(b.deployment.createdAt) - Date.parse(a.deployment.createdAt));
+  let deployments;
+  try {
+    const projects = await getDashboardDeployments(userId);
+    deployments = projects.flatMap(({ project, environments, deployments: recentDeployments }) => recentDeployments.map((deployment) => ({
+      project,
+      environment: environments.find((item) => item.id === deployment.environmentId),
+      deployment,
+    }))).sort((a, b) => Date.parse(b.deployment.createdAt) - Date.parse(a.deployment.createdAt));
+  } catch {
+    return <main className="mx-auto w-full max-w-5xl px-5 py-8 sm:px-8"><h1 className="text-2xl font-semibold tracking-tight">Activity</h1><p role="alert" className="mt-6 rounded-xl border border-[color-mix(in_srgb,var(--danger)_30%,transparent)] bg-[color-mix(in_srgb,var(--danger)_9%,transparent)] p-4 text-sm text-[var(--danger)]">Deployment activity could not be loaded. Please try again.</p></main>;
+  }
 
   return <main className="mx-auto w-full max-w-5xl px-5 py-8 sm:px-8">
     <header className="mb-7"><p className="mb-2 text-xs font-medium text-accent">WORKSPACE</p><h1 className="text-2xl font-semibold tracking-tight">Activity</h1><p className="mt-2 text-sm text-muted">Deployment updates across all your projects.</p></header>
-    <Card>{deployments.length === 0 ? <EmptyState title="No activity yet" description="Deployment events will appear here as your projects ship updates." action={<Link href="/projects/new" className="inline-flex h-9 items-center rounded-lg bg-accent px-3.5 text-sm font-medium text-white">Create a project</Link>} /> : <ul className="divide-y divide-border">{deployments.map(({ project, environment, deployment }) => <li key={deployment.id} className="flex flex-wrap items-center gap-3 px-4 py-4 sm:px-5"><span aria-hidden="true" className={`grid size-8 shrink-0 place-items-center rounded-lg text-sm ${deployment.status === "SUCCEEDED" ? "bg-[color-mix(in_srgb,var(--success)_12%,transparent)] text-[var(--success)]" : deployment.status === "FAILED" ? "bg-[color-mix(in_srgb,var(--danger)_12%,transparent)] text-[var(--danger)]" : "bg-[var(--surface-raised)] text-muted"}`}>{deployment.status === "SUCCEEDED" ? "✓" : deployment.status === "FAILED" ? "×" : "◷"}</span><div className="min-w-[140px] flex-1"><Link className="text-sm font-medium hover:text-accent" href={`/projects/${project.id}`}>{project.name}</Link><p className="mt-1 text-xs text-muted">{environment?.type ?? "Environment"} <span aria-hidden="true">·</span> <code className="font-mono">{deployment.commitSha.slice(0, 8)}</code>{deployment.rollbackOfId ? " · Rollback" : ""}</p></div><StatusBadge status={deployment.status as "PENDING" | "RUNNING" | "SUCCEEDED" | "FAILED" | "CANCELLED"} /><time className="w-full text-xs text-muted sm:w-auto" dateTime={deployment.createdAt} title={new Date(deployment.createdAt).toLocaleString()}>{relativeTime(deployment.createdAt)}</time></li>)}</ul>}</Card>
+    <Card>{deployments.length === 0 ? <EmptyState title="No activity yet" description="Deployment events will appear here as your projects ship updates." action={<Link href="/projects/new" className="inline-flex h-9 items-center rounded-lg bg-accent px-3.5 text-sm font-medium text-white">Create a project</Link>} /> : <><ul className="divide-y divide-border">{deployments.map(({ project, environment, deployment }) => <li key={deployment.id} className="flex flex-wrap items-center gap-3 px-4 py-4 sm:px-5"><span aria-hidden="true" className={`grid size-8 shrink-0 place-items-center rounded-lg text-sm ${deployment.status === "SUCCEEDED" ? "bg-[color-mix(in_srgb,var(--success)_12%,transparent)] text-[var(--success)]" : deployment.status === "FAILED" ? "bg-[color-mix(in_srgb,var(--danger)_12%,transparent)] text-[var(--danger)]" : "bg-[var(--surface-raised)] text-muted"}`}>{deployment.status === "SUCCEEDED" ? "✓" : deployment.status === "FAILED" ? "×" : "◷"}</span><div className="min-w-[140px] flex-1"><Link className="text-sm font-medium hover:text-accent" href={`/projects/${project.id}`}>{project.name}</Link><p className="mt-1 text-xs text-muted">{environment?.type ?? "Environment"} <span aria-hidden="true">·</span> <code className="font-mono">{deployment.commitSha.slice(0, 8)}</code>{deployment.rollbackOfId ? " · Rollback" : ""}</p></div><StatusBadge status={deployment.status as "PENDING" | "RUNNING" | "SUCCEEDED" | "FAILED" | "CANCELLED"} /><time className="w-full text-xs text-muted sm:w-auto" dateTime={deployment.createdAt} title={new Date(deployment.createdAt).toLocaleString()}>{relativeTime(deployment.createdAt)}</time></li>)}</ul><p className="border-t border-border px-4 py-3 text-[11px] text-muted sm:px-5">Showing the latest 8 deployments per project.</p></>}</Card>
   </main>;
 }
 

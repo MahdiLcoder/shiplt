@@ -4,6 +4,10 @@ import { env } from "../../../../lib/env";
 import { archiveClerkUserProjects, recordClerkLifecycleEvent } from "../../../../lib/data/lifecycle";
 
 export async function POST(request: NextRequest) {
+  if (!env.CLERK_WEBHOOK_SIGNING_SECRET) {
+    return Response.json({ error: "Clerk webhook is not configured." }, { status: 503 });
+  }
+
   let event;
   try {
     event = await verifyWebhook(request, { signingSecret: env.CLERK_WEBHOOK_SIGNING_SECRET });

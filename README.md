@@ -1,4 +1,4 @@
-# Shiplt
+# ShipIt
 
 Shiplt is a Next.js app with Clerk authentication.
 
@@ -38,13 +38,13 @@ The data contract lives in `prisma/contract.prisma`. After changing it, emit
 the generated contract files:
 
 ```bash
-pnpm prisma contract emit
+pnpm exec prisma contract emit
 ```
 
 There is no automatic contract-emission plugin for Next.js in this project.
 The `prebuild` script emits the contract before production builds; during
 development, run the command manually after contract changes. Initialize the
-database with `pnpm prisma db init` only after configuring a real
+database with `pnpm exec prisma db init` only after configuring a real
 `DATABASE_URL`.
 
 ## Deployment webhooks
@@ -76,6 +76,17 @@ Configure the Clerk webhook sender for `/api/webhooks/clerk` and set its signing
 secret in `CLERK_WEBHOOK_SIGNING_SECRET`.
 
 Run the repository's dependency-free webhook checks with `pnpm test`.
+
+The dashboard keeps its summary counts exact while loading only the latest
+eight deployments per project for recent activity. Project deployment and audit
+views are bounded to the latest 100 records, and deployment detail pages load
+their event timeline directly for the selected deployment (up to the latest
+100 events). Historical deployments remain stored in the database.
+
+For a manual local check, start the app with `pnpm dev`, create a project with
+the `development` environment, then send a signed event with
+`SHIPIT_TEST_PROJECT_SLUG=<project-slug> pnpm send:test-event`. Check the
+project overview, deployment history, event detail page, and activity page.
 
 ## Run with Docker Compose
 
