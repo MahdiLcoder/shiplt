@@ -117,8 +117,7 @@ To delete the local database and start with an empty one, run
 stored by this Compose project.**
 
 The Compose PostgreSQL credentials are fixed local development values and must
-not be reused in production. This setup builds and runs the app container; it
-does not configure a production registry or Kubernetes deployment.
+not be reused in production.
 
 ## GitHub Actions and GHCR
 
@@ -135,3 +134,40 @@ Private Clerk and webhook keys are not passed to the image build. Configure
 them at runtime in the deployment platform. GitHub Actions uses its provided
 `GITHUB_TOKEN`; the publish job needs package write permission enabled for the
 repository. Pull requests never receive package publishing permission.
+
+## Kubernetes deployment
+
+The starter manifests run two ShipIt replicas behind an internal ClusterIP
+service. Configure a managed PostgreSQL database outside Kubernetes, then
+create the `shipit-secrets` Secret in the `shipit` namespace with these keys:
+`CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SIGNING_SECRET`,
+`SHIPIT_WEBHOOK_SECRET`, and `DATABASE_URL`.
+Use a secure local file outside the repository for the values:
+
+```bash
+kubectl apply -f deploy/kubernetes/namespace.yaml
+kubectl -n shipit create secret generic shipit-secrets \
+  --from-env-file=/secure/path/shipit-runtime.env
+```
+
+`DATABASE_URL` must point to the managed database address reachable from the
+cluster, not `localhost`. The manifests do not create a database, public
+ingress, TLS certificate, or registry credentials. For a private GHCR package,
+create a registry pull Secret in the namespace and add its name under
+`spec.template.spec.imagePullSecrets` in `app.yaml` before deploying.
+
+Deploy an immutable image published by the workflow:
+
+```bash
+./deploy/kubernetes/deploy.sh ghcr.io/OWNER/REPOSITORY:sha-COMMIT
+```
+
+The script applies the manifests, waits up to three minutes for rollout, then
+prints pod, deployment, and container log diagnostics if the rollout fails.
+To check the service from inside the cluster, use a temporary port-forward:
+
+```bash
+kubectl -n shipit port-forward service/shipit 3000:3000
+```
+
+Then open [http://localhost:3000/api/health](http://localhost:3000/api/health).

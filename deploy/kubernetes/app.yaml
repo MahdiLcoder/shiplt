@@ -1,0 +1,113 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shipit-config
+  namespace: shipit
+data:
+  NODE_ENV: production
+  PORT: "3000"
+  HOSTNAME: 0.0.0.0
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shipit
+  namespace: shipit
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: shipit
+  template:
+    metadata:
+      labels:
+        app: shipit
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: app
+          image: ghcr.io/example/shiplt:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: shipit-config
+          env:
+            - name: CLERK_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: shipit-secrets
+                  key: CLERK_SECRET_KEY
+            - name: CLERK_WEBHOOK_SIGNING_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: shipit-secrets
+                  key: CLERK_WEBHOOK_SIGNING_SECRET
+            - name: SHIPIT_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: shipit-secrets
+                  key: SHIPIT_WEBHOOK_SECRET
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: shipit-secrets
+                  key: DATABASE_URL
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: [ALL]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shipit
+  namespace: shipit
+spec:
+  type: ClusterIP
+  selector:
+    app: shipit
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http
